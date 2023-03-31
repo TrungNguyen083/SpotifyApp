@@ -20,7 +20,7 @@
         app:srcCompat="@drawable/outline_arrow_back_white_24" />
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/tvSingleMain"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
@@ -29,12 +29,12 @@
         android:textColor="@color/white"
         android:textSize="20sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="@+id/textView"
-        app:layout_constraintStart_toStartOf="@+id/textView"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintEnd_toEndOf="@+id/tvTitleMain"
+        app:layout_constraintStart_toStartOf="@+id/tvTitleMain"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitleMain" />
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/tvTitleMain"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="40dp"
@@ -43,7 +43,7 @@
         android:textColor="@color/white"
         android:textSize="25sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/textView2"
+        app:layout_constraintBottom_toTopOf="@+id/tvSingleMain"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -57,7 +57,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2"
+        app:layout_constraintTop_toBottomOf="@+id/tvSingleMain"
         app:srcCompat="@drawable/dontcoiavt" />
 
     <androidx.constraintlayout.widget.ConstraintLayout

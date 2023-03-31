@@ -17,13 +17,15 @@ import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class MyService extends Service {
 
-    private static final int ACTION_PAUSE = 1;
-    private static final int ACTION_RESUME = 2;
-    private static final int ACTION_PREVIOUS = 3;
-    private static final int ACTION_NEXT = 4;
+    public static final int ACTION_PAUSE = 1;
+    public static final int ACTION_RESUME = 2;
+    public static final int ACTION_PREVIOUS = 3;
+    public static final int ACTION_NEXT = 4;
+    public static final int ACTION_START = 5;
 
 
     private MediaPlayer mediaPlayer;
@@ -52,6 +54,7 @@ public class MyService extends Service {
             if(song != null)
             {
                 msong = song;
+                isPlaying = true;
                 startMusic(song);
                 sendNotification(song);
             }
@@ -70,6 +73,7 @@ public class MyService extends Service {
         }
         mediaPlayer.start();
         isPlaying = true;
+        sendActionToActivity(ACTION_START);
     }
 
     private void handleActionMusic(int action) {
@@ -81,8 +85,10 @@ public class MyService extends Service {
                 resumeMusic();
                 break;
             case ACTION_PREVIOUS:
-                stopSelf(-1);
+                sendActionToActivity(ACTION_PREVIOUS);
                 break;
+            case ACTION_NEXT:
+                sendActionToActivity(ACTION_NEXT);
         }
     }
 
@@ -91,6 +97,7 @@ public class MyService extends Service {
             mediaPlayer.pause();
             isPlaying = false;
             sendNotification(msong);
+            sendActionToActivity(ACTION_PAUSE);
         }
     }
 
@@ -100,6 +107,7 @@ public class MyService extends Service {
             mediaPlayer.start();
             isPlaying = true;
             sendNotification(msong);
+            sendActionToActivity(ACTION_RESUME);
         }
     }
 
@@ -154,5 +162,16 @@ public class MyService extends Service {
             mediaPlayer.release();
             mediaPlayer = null;
         }
+    }
+
+    private void sendActionToActivity(int action)
+    {
+        Intent intent = new Intent("send_data_to_activity");
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("object_song", msong);
+        bundle.putBoolean("status_player", isPlaying);
+        bundle.putInt("action_music", action);
+        intent.putExtras(bundle);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 }

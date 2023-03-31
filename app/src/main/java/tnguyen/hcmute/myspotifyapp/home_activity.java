@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 
 public class home_activity extends AppCompatActivity {
 
@@ -29,7 +31,7 @@ public class home_activity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-
+        ArrayList<Song> listSongTest = DAOSong.getAllSong();
         //Khoi tao ListProduct, tự sinh một số dữ liệu
         listSong = new ArrayList<>();
         listSong.add(new Song("Don't Côi", "Orijjin", R.drawable.dontcoiavt, R.raw.filemusic));
@@ -41,7 +43,7 @@ public class home_activity extends AppCompatActivity {
         listSong.add(new Song("Rồi Ta Sẽ Ngắm Pháo Hoa Cùng Nhau", "Chillies", R.drawable.roitasengamphaohoacungnhau, R.raw.filemusic));
         listSong.add(new Song("Anh Đã Ổn Hơn", "MCK", R.drawable.anhdaonhon, R.raw.filemusic));
 
-        musicListViewAdapter = new MusicListViewAdapter(listSong);
+        musicListViewAdapter = new MusicListViewAdapter(listSongTest);
 
         listViewSong = findViewById(R.id.List0fSong);
         listViewSong.setAdapter(musicListViewAdapter);
