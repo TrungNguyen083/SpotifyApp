@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
@@ -47,14 +48,22 @@ public class MyService extends Service {
     public int onStartCommand(Intent intent,int flags,int startId)
     {
         Bundle bundle = intent.getExtras();
+//        if(msong != null)
+//        {
+//            stopMusic();
+//        }
         if(bundle!=null)
         {
             Song song = (Song) bundle.get("object_song");
 
+            if (song != null && song != msong)
+            {
+                stopMusic();
+            }
+
             if(song != null)
             {
                 msong = song;
-                isPlaying = true;
                 startMusic(song);
                 sendNotification(song);
             }
@@ -66,14 +75,23 @@ public class MyService extends Service {
         return START_NOT_STICKY;
     }
 
+
     private void startMusic(Song song) {
-        if(mediaPlayer == null)
-        {
-            mediaPlayer = mediaPlayer.create(getApplicationContext(), song.getResource());
+        try{
+            if(mediaPlayer == null)
+            {
+                String pathSong = song.getResource();
+                Resources resources = getApplicationContext().getResources();
+                int pathSongID = resources.getIdentifier(pathSong, "raw", getApplicationContext().getPackageName());
+                mediaPlayer = mediaPlayer.create(getApplicationContext(), pathSongID);
+            }
+            mediaPlayer.start();
+            isPlaying = true;
+            sendActionToActivity(ACTION_START);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        mediaPlayer.start();
-        isPlaying = true;
-        sendActionToActivity(ACTION_START);
+
     }
 
     private void handleActionMusic(int action) {
@@ -110,13 +128,25 @@ public class MyService extends Service {
             sendActionToActivity(ACTION_RESUME);
         }
     }
+    private void stopMusic() {
+        if(mediaPlayer != null && isPlaying)
+        {
+            mediaPlayer.stop();
+            isPlaying = false;
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
 
     private void sendNotification(Song song)
     {
         Intent intent = new Intent(this,MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this,0,intent,PendingIntent.FLAG_UPDATE_CURRENT);
 
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), song.getImage());
+        String imgSong = song.getImage();
+        Resources resources = getApplicationContext().getResources();
+        int imgSongID = resources.getIdentifier(imgSong, "drawable", getApplicationContext().getPackageName());
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), imgSongID);
 
         RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.layout_notification);
         remoteViews.setTextViewText(R.id.tv_titleSong, song.getTitle());

@@ -4,14 +4,18 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
@@ -29,8 +33,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             Bundle bundle = intent.getExtras();
-            if(bundle == null)
-            {
+            if (bundle == null) {
                 return;
             }
             song = (Song) bundle.get("object_song");
@@ -41,14 +44,37 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    @SuppressLint("CutPasteId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //Handle load song
+        Intent intent = getIntent();
+        int id = intent.getIntExtra("songID", 0);
+        DBHandler dbHandler = new DBHandler(MainActivity.this);
+        song = dbHandler.showSongByID(id);
+
+        TextView tvTitleMain, tvSingleMain;
+        ImageView imgSongMain;
+
+        tvTitleMain = findViewById(R.id.tvTitleMain);
+        tvSingleMain = findViewById(R.id.tvSingleMain);
+        imgSongMain = (ImageView) findViewById(R.id.imgSongAvt);
+
+        // Lấy tên của hình ảnh từ ID
+        String imageName = song.getImage();
+        Resources resources = getApplicationContext().getResources();
+        int imageResourceID = resources.getIdentifier(imageName, "drawable", getApplicationContext().getPackageName());
+
+
+        tvTitleMain.setText(song.getTitle());
+        tvSingleMain.setText(song.getSingle());
+
         ImageView imgGlide = findViewById(R.id.imgSongAvt);
         Glide.with(this)
-                .load(R.drawable.dontcoiavt)
+                .load(imageResourceID)
                 .apply(new RequestOptions().transform(new CenterCrop()).transform(new RoundedCorners(24)))
                 .into(imgGlide);
 
@@ -58,7 +84,6 @@ public class MainActivity extends AppCompatActivity {
         animationDrawable.setExitFadeDuration(5000);
         animationDrawable.start();
 
-        //Handle load song
 
         ImageView imgBack = findViewById(R.id.imgBack);
         imgBack.setOnClickListener(new View.OnClickListener() {
@@ -75,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         btnPlayOrPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                clickStartSong();
+                clickStartSong(song);
                 btnPlayOrPause.setImageResource(R.drawable.outline_pause_circle_white_48);
             }
         });
@@ -86,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void clickStartSong() {
-        song = new Song("Có em bên đời bổng vui", "Chillies", R.drawable.dontcoiavt, R.raw.filemusic);
+    private void clickStartSong(Song song) {
         Intent intent = new Intent(this, MyService.class);
         Bundle bundle = new Bundle();
         bundle.putSerializable("object_song", song);
@@ -97,8 +121,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void handleLayoutBottomMusic(int action) {
-        switch (action)
-        {
+        switch (action) {
             case MyService.ACTION_PAUSE:
                 setBtnPlayOrPause();
                 break;
@@ -119,36 +142,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showInforSong()
-    {
-        if(song==null) {
+    private void showInforSong() {
+        if (song == null) {
             return;
         }
         btnPlayOrPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(isPlaying)
-                {
+                if (isPlaying) {
                     sendActionToService(MyService.ACTION_PAUSE);
-                }
-                else {
+                } else {
                     sendActionToService(MyService.ACTION_RESUME);
                 }
             }
         });
     }
 
-    private void setBtnPlayOrPause()
-    {
-        if(isPlaying) {
+    private void setBtnPlayOrPause() {
+        if (isPlaying) {
             btnPlayOrPause.setImageResource(R.drawable.outline_pause_circle_white_48);
         } else {
             btnPlayOrPause.setImageResource(R.drawable.outline_play_circle_outline_white_48);
         }
     }
 
-    private void sendActionToService(int action)
-    {
+    private void sendActionToService(int action) {
         Intent intent = new Intent(this, MyService.class);
         intent.putExtra("action_music_receiver", action);
         startService(intent);

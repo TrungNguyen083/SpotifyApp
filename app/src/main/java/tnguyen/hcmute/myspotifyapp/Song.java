@@ -6,20 +6,20 @@ public class Song implements Serializable {
     private int id;
     private String title;
     private String single;
-    private int image;
-    private int resource;
+    private String image;
+    private String resource;
     private String duration;
 
     public Song() {}
 
-    public Song(String title, String single, int image, int resource) {
+    public Song(String title, String single, String image, String resource) {
         this.title = title;
         this.single = single;
         this.image = image;
         this.resource = resource;
     }
 
-    public Song(int id, String title, String single, int resource, String duration, int image) {
+    public Song(int id, String title, String single, String resource, String duration, String image) {
         this.id = id;
         this.title = title;
         this.single = single;
@@ -60,19 +60,19 @@ public class Song implements Serializable {
         this.single = single;
     }
 
-    public int getImage() {
+    public String getImage() {
         return image;
     }
 
-    public void setImage(int image) {
+    public void setImage(String image) {
         this.image = image;
     }
 
-    public int getResource() {
+    public String getResource() {
         return resource;
     }
 
-    public void setResource(int resource) {
+    public void setResource(String resource) {
         this.resource = resource;
     }
 }
