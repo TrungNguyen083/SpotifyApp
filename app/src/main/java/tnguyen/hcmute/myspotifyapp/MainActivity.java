@@ -6,15 +6,19 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.res.Resources;
 import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
@@ -22,11 +26,14 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 
+import java.util.concurrent.TimeUnit;
+
 public class MainActivity extends AppCompatActivity {
 
     private ImageView btnPlayOrPause;
     private boolean isPlaying;
     private boolean isNewSong = true;
+    private SeekBar seekbarSong;
     private Song song;
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -44,6 +51,23 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private MyService mService;
+    private boolean mIsBound = false;
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            MyService.MyBinder myBinder = (MyService.MyBinder) iBinder;
+            mService = myBinder.getService();
+            mIsBound = true;
+            mService.setSeekBar(seekbarSong);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mIsBound = false;
+        }
+    };
+
     @SuppressLint("CutPasteId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +81,34 @@ public class MainActivity extends AppCompatActivity {
         song = dbHandler.showSongByID(id);
 
         TextView tvTitleMain, tvSingleMain;
-        ImageView imgSongMain;
 
         tvTitleMain = findViewById(R.id.tvTitleMain);
         tvSingleMain = findViewById(R.id.tvSingleMain);
-        imgSongMain = (ImageView) findViewById(R.id.imgSongAvt);
+
+        seekbarSong = findViewById(R.id.seekBar);
+        seekbarSong.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (mIsBound) {
+                    mService.onSeekBarProgressChanged();
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                if (mIsBound) {
+                    mService.onSeekBarStartTrackingTouch();
+                }
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                if (mIsBound) {
+                    mService.onSeekBarStopTrackingTouch();
+                }
+            }
+        });
 
         // Lấy tên của hình ảnh từ ID
         String imageName = song.getImage();
@@ -102,8 +149,57 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 clickStartSong(song);
                 btnPlayOrPause.setImageResource(R.drawable.outline_pause_circle_white_48);
+
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Đăng ký Broadcast Receiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("MEDIA_PLAYER_SEEK_TO");
+        filter.addAction("MEDIA_PLAYER_DURATION");
+        registerReceiver(mBroadcastReceiver, filter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Hủy đăng ký Broadcast Receiver
+        unregisterReceiver(mBroadcastReceiver);
+    }
+
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Xử lý các thông báo từ Service
+            if (intent.getAction().equals("MEDIA_PLAYER_SEEK_TO")) {
+                int seekToPosition = intent.getIntExtra("seek_to_position", 0);
+                // Di chuyển SeekBar đến vị trí mới
+                seekbarSong.setProgress(seekToPosition);
+                TextView tvtimeform = findViewById(R.id.time_from);
+                tvtimeform.setText(formattedTime(seekToPosition));
+            } else if (intent.getAction().equals("MEDIA_PLAYER_DURATION")) {
+                int duration = intent.getIntExtra("duration", 0);
+                // Cập nhật chiều dài của SeekBar
+                seekbarSong.setMax(duration);
+
+                TextView tvtimeTo = findViewById(R.id.time_to);
+                tvtimeTo.setText(formattedTime(duration));
+
+            }
+        }
+    };
+
+    private String formattedTime(int duration){
+        String durationString = String.format("%02d:%02d",
+                TimeUnit.MILLISECONDS.toMinutes(duration) -
+                        TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(duration)),
+                TimeUnit.MILLISECONDS.toSeconds(duration) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(duration)));
+        return durationString;
     }
 
     private void openHomeActivity() {
@@ -171,4 +267,6 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("action_music_receiver", action);
         startService(intent);
     }
+
+
 }

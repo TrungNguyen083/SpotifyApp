@@ -12,15 +12,19 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.RemoteViews;
+import android.widget.SeekBar;
 
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-public class MyService extends Service {
+public class MyService extends Service{
 
     public static final int ACTION_PAUSE = 1;
     public static final int ACTION_RESUME = 2;
@@ -33,11 +37,22 @@ public class MyService extends Service {
     private boolean isPlaying;
     private Song msong;
 
+    Handler mHandler;
+
+    private boolean mIsSeekBarTracking = false;
+
+    private boolean mUserIsSeeking = false;
+    private int mSeekBarPosition = 0;
+    private final IBinder mBinder = (IBinder) new MyBinder();
+
+    SeekBar mSeekBar;
+
     @Override
     public void onCreate()
     {
         super.onCreate();
         Log.e("TrungNguyen","Myservice onCreate");
+        mHandler = new Handler();
     }
 
     @Override
@@ -85,13 +100,22 @@ public class MyService extends Service {
                 int pathSongID = resources.getIdentifier(pathSong, "raw", getApplicationContext().getPackageName());
                 mediaPlayer = mediaPlayer.create(getApplicationContext(), pathSongID);
             }
-            mediaPlayer.start();
+            mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    // Bắt đầu phát nhạc
+                    mediaPlayer.start();
+
+                    // Cập nhật SeekBar
+                    updateSeekBar();
+                }
+            });
+
             isPlaying = true;
             sendActionToActivity(ACTION_START);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 
     private void handleActionMusic(int action) {
@@ -203,5 +227,78 @@ public class MyService extends Service {
         bundle.putInt("action_music", action);
         intent.putExtras(bundle);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    public class MyBinder extends Binder {
+        MyService getService() {
+            return MyService.this;
+        }
+    }
+    public void setSeekBar(SeekBar seekBar) {
+        mSeekBar = seekBar;
+    }
+
+
+    private void sendSeekBarUpdate(int currentPosition, int duration) {
+        Intent intent = new Intent("MEDIA_PLAYER_SEEK_TO");
+        intent.putExtra("seek_to_position", currentPosition);
+        sendBroadcast(intent);
+
+        intent = new Intent("MEDIA_PLAYER_DURATION");
+        intent.putExtra("duration", duration);
+        sendBroadcast(intent);
+    }
+
+    private void updateSeekBar() {
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                int currentPosition = mediaPlayer.getCurrentPosition();
+                //mUserIsSeeking = false;
+                int duration = mediaPlayer.getDuration();
+                sendSeekBarUpdate(currentPosition, duration);
+                updateSeekBar();
+            }
+        }, 1000);
+    }
+
+    private Runnable mUpdateSeekBarRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateSeekBar();
+        }
+    };
+
+    public void onSeekBarProgressChanged() {
+            mSeekBarPosition = mediaPlayer.getCurrentPosition();
+            mediaPlayer.seekTo(mSeekBarPosition);
+            mHandler.removeCallbacks(mUpdateSeekBarRunnable);
+            updateSeekBar();
+    }
+
+    public void onSeekBarStartTrackingTouch() {
+        if (mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            mIsSeekBarTracking = true;
+            mSeekBarPosition = mediaPlayer.getCurrentPosition();
+            mHandler.removeCallbacks(mUpdateSeekBarRunnable);
+        }
+    }
+
+    public void onSeekBarStopTrackingTouch() {
+        if (mIsSeekBarTracking) {
+            mediaPlayer.seekTo(mSeekBarPosition);
+            mediaPlayer.start();
+            mIsSeekBarTracking = false;
+            updateSeekBar();
+        }
+    }
+
+    public void onProgressChanged( int progress, boolean fromUser)
+    {
+        if (fromUser) {
+            mUserIsSeeking = true;
+            mediaPlayer.seekTo(progress);
+        }
     }
 }
