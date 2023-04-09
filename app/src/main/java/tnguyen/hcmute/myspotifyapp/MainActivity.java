@@ -31,10 +31,14 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends AppCompatActivity {
 
     private ImageView btnPlayOrPause;
+    private ImageView btnNextSong;
+    private ImageView btnPrevious;
     private boolean isPlaying;
-    private boolean isNewSong = true;
     private SeekBar seekbarSong;
     private Song song;
+    int duration = 10000;
+    int listsize;
+    int newID = -1;
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -71,12 +75,15 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("CutPasteId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         //Handle load song
         Intent intent = getIntent();
+        int listSongSize = intent.getIntExtra("listSongsize", 0);
+        listsize = listSongSize;
         int id = intent.getIntExtra("songID", 0);
+
         DBHandler dbHandler = new DBHandler(MainActivity.this);
         song = dbHandler.showSongByID(id);
 
@@ -136,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
         imgBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                newID = -1;
                 openHomeActivity();
             }
         });
@@ -150,6 +158,39 @@ public class MainActivity extends AppCompatActivity {
                 clickStartSong(song);
                 btnPlayOrPause.setImageResource(R.drawable.outline_pause_circle_white_48);
 
+            }
+        });
+
+        btnNextSong = findViewById(R.id.imgNext);
+        btnNextSong.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                if (song.getId() + 1 <= listSongSize) {
+                    newID = song.getId() + 1;
+                } else {
+                    newID = 1;
+                }
+                Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                intent.putExtra("songID", newID);
+                intent.putExtra("listSongsize", listSongSize);
+                startActivity(intent);
+            }
+        });
+
+        btnPrevious = findViewById(R.id.imgPreviour);
+        btnPrevious.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (song.getId() - 1 >= 1) {
+                    newID = song.getId() - 1;
+                } else {
+                    newID = listSongSize;
+                }
+                Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                intent.putExtra("songID", newID);
+                intent.putExtra("listSongsize", listSongSize);
+                startActivity(intent);
             }
         });
     }
@@ -176,24 +217,35 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             // Xử lý các thông báo từ Service
             if (intent.getAction().equals("MEDIA_PLAYER_SEEK_TO")) {
-                int seekToPosition = intent.getIntExtra("seek_to_position", 0);
                 // Di chuyển SeekBar đến vị trí mới
+                int seekToPosition = intent.getIntExtra("seek_to_position", 0);
                 seekbarSong.setProgress(seekToPosition);
                 TextView tvtimeform = findViewById(R.id.time_from);
                 tvtimeform.setText(formattedTime(seekToPosition));
+                if(seekToPosition == -1)
+                {
+                    if (song.getId() + 1 <= listsize) {
+                        newID = song.getId() + 1;
+                    } else {
+                        newID = 1;
+                    }
+                    Intent intent3 = new Intent(MainActivity.this, MainActivity.class);
+                    intent3.putExtra("songID", newID);
+                    intent3.putExtra("listSongsize", listsize);
+                    startActivity(intent3);
+                }
             } else if (intent.getAction().equals("MEDIA_PLAYER_DURATION")) {
-                int duration = intent.getIntExtra("duration", 0);
+                duration = intent.getIntExtra("duration", 0);
                 // Cập nhật chiều dài của SeekBar
                 seekbarSong.setMax(duration);
 
                 TextView tvtimeTo = findViewById(R.id.time_to);
                 tvtimeTo.setText(formattedTime(duration));
-
             }
         }
     };
 
-    private String formattedTime(int duration){
+    private String formattedTime(int duration) {
         String durationString = String.format("%02d:%02d",
                 TimeUnit.MILLISECONDS.toMinutes(duration) -
                         TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(duration)),
@@ -225,10 +277,26 @@ public class MainActivity extends AppCompatActivity {
                 btnPlayOrPause.setImageResource(R.drawable.outline_pause_circle_white_48);
                 break;
             case MyService.ACTION_PREVIOUS:
-                //layoutBottom.setVisibility(View.GONE);
+                if (song.getId() - 1 >= 1) {
+                    newID = song.getId() - 1;
+                } else {
+                    newID = listsize;
+                }
+                Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                intent.putExtra("songID", newID);
+                intent.putExtra("listSongsize", listsize);
+                startActivity(intent);
                 break;
             case MyService.ACTION_NEXT:
-                //layoutBottom.setVisibility(View.GONE);
+                if (song.getId() + 1 <= listsize) {
+                    newID = song.getId() + 1;
+                } else {
+                    newID = 1;
+                }
+                Intent intent1 = new Intent(MainActivity.this, MainActivity.class);
+                intent1.putExtra("songID", newID);
+                intent1.putExtra("listSongsize", listsize);
+                startActivity(intent1);
                 break;
             case MyService.ACTION_START:
                 //layoutBottom.setVisibility(View.VISIBLE);

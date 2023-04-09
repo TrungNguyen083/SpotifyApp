@@ -6,8 +6,10 @@ import static tnguyen.hcmute.myspotifyapp.MySpotifyApplication.CHANNEL_ID;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -24,7 +26,9 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-public class MyService extends Service{
+import java.io.IOException;
+
+public class MyService extends Service {
 
     public static final int ACTION_PAUSE = 1;
     public static final int ACTION_RESUME = 2;
@@ -43,15 +47,14 @@ public class MyService extends Service{
 
     private boolean mUserIsSeeking = false;
     private int mSeekBarPosition = 0;
-    private final IBinder mBinder = (IBinder) new MyBinder();
 
     SeekBar mSeekBar;
+    int currentPosition;
 
     @Override
-    public void onCreate()
-    {
+    public void onCreate() {
         super.onCreate();
-        Log.e("TrungNguyen","Myservice onCreate");
+        Log.e("TrungNguyen", "Myservice onCreate");
         mHandler = new Handler();
     }
 
@@ -59,25 +62,17 @@ public class MyService extends Service{
     public IBinder onBind(Intent intent) {
         return null;
     }
-    @Override
-    public int onStartCommand(Intent intent,int flags,int startId)
-    {
-        Bundle bundle = intent.getExtras();
-//        if(msong != null)
-//        {
-//            stopMusic();
-//        }
-        if(bundle!=null)
-        {
-            Song song = (Song) bundle.get("object_song");
 
-            if (song != null && song != msong)
-            {
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Bundle bundle = intent.getExtras();
+        if (bundle != null) {
+            Song song = (Song) bundle.get("object_song");
+            if (song != null && song != msong) {
                 stopMusic();
             }
 
-            if(song != null)
-            {
+            if (song != null) {
                 msong = song;
                 startMusic(song);
                 sendNotification(song);
@@ -87,14 +82,14 @@ public class MyService extends Service{
         int actionMusic = intent.getIntExtra("action_music_receiver", 0);
         handleActionMusic(actionMusic);
 
+
         return START_NOT_STICKY;
     }
 
 
     private void startMusic(Song song) {
-        try{
-            if(mediaPlayer == null)
-            {
+        try {
+            if (mediaPlayer == null) {
                 String pathSong = song.getResource();
                 Resources resources = getApplicationContext().getResources();
                 int pathSongID = resources.getIdentifier(pathSong, "raw", getApplicationContext().getPackageName());
@@ -135,7 +130,7 @@ public class MyService extends Service{
     }
 
     private void pauseMusic() {
-        if(mediaPlayer != null && isPlaying){
+        if (mediaPlayer != null && isPlaying) {
             mediaPlayer.pause();
             isPlaying = false;
             sendNotification(msong);
@@ -144,17 +139,16 @@ public class MyService extends Service{
     }
 
     private void resumeMusic() {
-        if(mediaPlayer != null && !isPlaying)
-        {
+        if (mediaPlayer != null && !isPlaying) {
             mediaPlayer.start();
             isPlaying = true;
             sendNotification(msong);
             sendActionToActivity(ACTION_RESUME);
         }
     }
+
     private void stopMusic() {
-        if(mediaPlayer != null && isPlaying)
-        {
+        if (mediaPlayer != null && isPlaying) {
             mediaPlayer.stop();
             isPlaying = false;
             mediaPlayer.release();
@@ -162,10 +156,9 @@ public class MyService extends Service{
         }
     }
 
-    private void sendNotification(Song song)
-    {
-        Intent intent = new Intent(this,MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,0,intent,PendingIntent.FLAG_UPDATE_CURRENT);
+    private void sendNotification(Song song) {
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         String imgSong = song.getImage();
         Resources resources = getApplicationContext().getResources();
@@ -175,10 +168,10 @@ public class MyService extends Service{
         RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.layout_notification);
         remoteViews.setTextViewText(R.id.tv_titleSong, song.getTitle());
         remoteViews.setTextViewText(R.id.tv_singleSong, song.getSingle());
-        remoteViews.setImageViewBitmap(R.id.img_song,bitmap);
+        remoteViews.setImageViewBitmap(R.id.img_song, bitmap);
 
         remoteViews.setImageViewResource(R.id.img_play_or_pause, R.drawable.outline_play_circle_outline_white_36);
-        if(isPlaying) {
+        if (isPlaying) {
             remoteViews.setOnClickPendingIntent(R.id.img_play_or_pause, getPendingIntent(this, ACTION_PAUSE));
             remoteViews.setImageViewResource(R.id.img_play_or_pause, R.drawable.pausepx);
         } else {
@@ -190,13 +183,13 @@ public class MyService extends Service{
         remoteViews.setOnClickPendingIntent(R.id.img_next, getPendingIntent(this, ACTION_NEXT));
 
 
-        Notification notification = new NotificationCompat.Builder(this,CHANNEL_ID)
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .setCustomContentView(remoteViews)
                 .setSound(null)
                 .build();
-        startForeground(1,notification);
+        startForeground(1, notification);
 
     }
 
@@ -207,19 +200,16 @@ public class MyService extends Service{
     }
 
     @Override
-    public void onDestroy()
-    {
+    public void onDestroy() {
         super.onDestroy();
-        Log.e("TrungNguyen","MyService onDestroy");
-        if(mediaPlayer != null)
-        {
+        Log.e("TrungNguyen", "MyService onDestroy");
+        if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
         }
     }
 
-    private void sendActionToActivity(int action)
-    {
+    private void sendActionToActivity(int action) {
         Intent intent = new Intent("send_data_to_activity");
         Bundle bundle = new Bundle();
         bundle.putSerializable("object_song", msong);
@@ -234,6 +224,7 @@ public class MyService extends Service{
             return MyService.this;
         }
     }
+
     public void setSeekBar(SeekBar seekBar) {
         mSeekBar = seekBar;
     }
@@ -249,17 +240,33 @@ public class MyService extends Service{
         sendBroadcast(intent);
     }
 
+
     private void updateSeekBar() {
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                int currentPosition = mediaPlayer.getCurrentPosition();
-                //mUserIsSeeking = false;
-                int duration = mediaPlayer.getDuration();
-                sendSeekBarUpdate(currentPosition, duration);
-                updateSeekBar();
-            }
-        }, 1000);
+        if(mHandler != null)
+        {
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    currentPosition = mediaPlayer.getCurrentPosition();
+                    int duration = mediaPlayer.getDuration();
+//                    sendSeekBarUpdate(currentPosition, duration);
+//                    updateSeekBar();
+                    if(currentPosition > duration)
+                    {
+                        mediaPlayer.seekTo(0);
+                        currentPosition = -1;
+                        Log.e("Lỗi không?", String.valueOf(currentPosition));
+                        sendSeekBarUpdate(currentPosition, duration);
+                        updateSeekBar();
+                    }
+                    else {
+                        sendSeekBarUpdate(currentPosition, duration);
+                        updateSeekBar();
+                    }
+
+                }
+            }, 1000);
+        }
     }
 
     private Runnable mUpdateSeekBarRunnable = new Runnable() {
@@ -270,10 +277,10 @@ public class MyService extends Service{
     };
 
     public void onSeekBarProgressChanged() {
-            mSeekBarPosition = mediaPlayer.getCurrentPosition();
-            mediaPlayer.seekTo(mSeekBarPosition);
-            mHandler.removeCallbacks(mUpdateSeekBarRunnable);
-            updateSeekBar();
+        mSeekBarPosition = mediaPlayer.getCurrentPosition();
+        mediaPlayer.seekTo(mSeekBarPosition);
+        mHandler.removeCallbacks(mUpdateSeekBarRunnable);
+        updateSeekBar();
     }
 
     public void onSeekBarStartTrackingTouch() {
@@ -294,8 +301,7 @@ public class MyService extends Service{
         }
     }
 
-    public void onProgressChanged( int progress, boolean fromUser)
-    {
+    public void onProgressChanged(int progress, boolean fromUser) {
         if (fromUser) {
             mUserIsSeeking = true;
             mediaPlayer.seekTo(progress);
