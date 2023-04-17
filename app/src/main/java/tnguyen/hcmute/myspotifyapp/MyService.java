@@ -14,18 +14,38 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.RemoteViews;
 import android.widget.SeekBar;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
+import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.storage.FileDownloadTask;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
+import java.io.File;
 import java.io.IOException;
 
 public class MyService extends Service {
@@ -51,6 +71,24 @@ public class MyService extends Service {
     SeekBar mSeekBar;
     int currentPosition;
 
+    FirebaseStorage storage = FirebaseStorage.getInstance();
+    DatabaseReference mDatabaseRef;
+
+    private final IBinder mBinder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        MyService getService() {
+            return MyService.this;
+        }
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -58,10 +96,6 @@ public class MyService extends Service {
         mHandler = new Handler();
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -69,9 +103,10 @@ public class MyService extends Service {
         if (bundle != null) {
             Song song = (Song) bundle.get("object_song");
             if (song != null && song != msong) {
+
+                Log.e("Stop", "Stopped");
                 stopMusic();
             }
-
             if (song != null) {
                 msong = song;
                 startMusic(song);
@@ -89,22 +124,29 @@ public class MyService extends Service {
 
     private void startMusic(Song song) {
         try {
-            if (mediaPlayer == null) {
-                String pathSong = song.getResource();
-                Resources resources = getApplicationContext().getResources();
-                int pathSongID = resources.getIdentifier(pathSong, "raw", getApplicationContext().getPackageName());
-                mediaPlayer = mediaPlayer.create(getApplicationContext(), pathSongID);
-            }
-            mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            StorageReference storageRef = storage.getReferenceFromUrl(song.getResource());
+            storageRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                 @Override
-                public void onPrepared(MediaPlayer mp) {
-                    // Bắt đầu phát nhạc
-                    mediaPlayer.start();
+                public void onSuccess(Uri uri) {
+                    try {
+                        mediaPlayer = new MediaPlayer();
+                        mediaPlayer.setDataSource(uri.toString());
+                        mediaPlayer.prepareAsync();
+                        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                            @Override
+                            public void onPrepared(MediaPlayer mp) {
+                                mp.start();
+                                updateSeekBar();
+                            }
+                        });
 
-                    // Cập nhật SeekBar
-                    updateSeekBar();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
+
+
 
             isPlaying = true;
             sendActionToActivity(ACTION_START);
@@ -153,6 +195,7 @@ public class MyService extends Service {
             isPlaying = false;
             mediaPlayer.release();
             mediaPlayer = null;
+            mHandler.removeCallbacks(mUpdateSeekBarRunnable);
         }
     }
 
@@ -247,15 +290,22 @@ public class MyService extends Service {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    currentPosition = mediaPlayer.getCurrentPosition();
-                    int duration = mediaPlayer.getDuration();
-//                    sendSeekBarUpdate(currentPosition, duration);
-//                    updateSeekBar();
+                    int duration;
+                    if(mediaPlayer != null)
+                    {
+                        currentPosition = mediaPlayer.getCurrentPosition();
+                        duration = mediaPlayer.getDuration();
+                    }
+                    else {
+                        currentPosition = 0;
+                        duration = 0;
+                    }
+
+
                     if(currentPosition > duration)
                     {
                         mediaPlayer.seekTo(0);
                         currentPosition = -1;
-                        Log.e("Lỗi không?", String.valueOf(currentPosition));
                         sendSeekBarUpdate(currentPosition, duration);
                         updateSeekBar();
                     }
@@ -286,6 +336,7 @@ public class MyService extends Service {
     public void onSeekBarStartTrackingTouch() {
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
+            Log.e("Test", "keo");
             mIsSeekBarTracking = true;
             mSeekBarPosition = mediaPlayer.getCurrentPosition();
             mHandler.removeCallbacks(mUpdateSeekBarRunnable);
@@ -295,6 +346,7 @@ public class MyService extends Service {
     public void onSeekBarStopTrackingTouch() {
         if (mIsSeekBarTracking) {
             mediaPlayer.seekTo(mSeekBarPosition);
+            Log.e("Test", "tha");
             mediaPlayer.start();
             mIsSeekBarTracking = false;
             updateSeekBar();

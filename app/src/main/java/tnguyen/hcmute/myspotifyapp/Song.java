@@ -1,5 +1,7 @@
 package tnguyen.hcmute.myspotifyapp;
 
+import com.google.firebase.database.Exclude;
+
 import java.io.Serializable;
 
 public class Song implements Serializable {
@@ -9,6 +11,16 @@ public class Song implements Serializable {
     private String image;
     private String resource;
     private String duration;
+    @Exclude
+    public String getKey() {
+        return key;
+    }
+    @Exclude
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    private String key;
 
     public Song() {}
 
@@ -17,15 +29,6 @@ public class Song implements Serializable {
         this.single = single;
         this.image = image;
         this.resource = resource;
-    }
-
-    public Song(int id, String title, String single, String resource, String duration, String image) {
-        this.id = id;
-        this.title = title;
-        this.single = single;
-        this.image = image;
-        this.resource = resource;
-        this.duration = duration;
     }
 
     public int getId() {

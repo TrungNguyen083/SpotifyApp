@@ -103,7 +103,7 @@
             android:src="@drawable/morebtn" />
 
         <androidx.constraintlayout.utils.widget.ImageFilterView
-            android:id="@+id/shuffleBtn"
+            android:id="@+id/imgAddSong"
             android:layout_width="35dp"
             android:layout_height="35dp"
             android:layout_below="@+id/likeNumber"
@@ -125,13 +125,12 @@
 
     </RelativeLayout>
 
-    <ListView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/List0fSong"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="#111313"
         app:layout_constraintBottom_toTopOf="@+id/bottom_nav_view"
-
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/relativeLayout" />
